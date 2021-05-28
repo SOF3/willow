@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote_spanned, ToTokens};
-use syn::parse::{Parse, ParseBuffer, ParseStream};
+use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 
 pub struct Input {
@@ -26,10 +26,10 @@ pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
                         Some(CodeSource::File(attr.span(), format!("{}.frag", &path)));
                 }
                 StructAttr::VertexCode(expr) => {
-                    vertex_source = Some(CodeSource::Expr(expr));
+                    vertex_source = Some(CodeSource::Expr(Box::new(expr)));
                 }
                 StructAttr::FragmentCode(expr) => {
-                    fragment_source = Some(CodeSource::Expr(expr));
+                    fragment_source = Some(CodeSource::Expr(Box::new(expr)));
                 }
             }
         }
@@ -67,11 +67,21 @@ pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
 
     let vertex_source = match vertex_source {
         Some(s) => s,
-        None => return Err(syn::Error::new_spanned(&input.fields, "Cannot infer vertex code")),
+        None => {
+            return Err(syn::Error::new_spanned(
+                &input.fields,
+                "Cannot infer vertex code",
+            ))
+        }
     };
     let fragment_source = match fragment_source {
         Some(s) => s,
-        None => return Err(syn::Error::new_spanned(&input.fields, "Cannot infer fragment code")),
+        None => {
+            return Err(syn::Error::new_spanned(
+                &input.fields,
+                "Cannot infer fragment code",
+            ))
+        }
     };
 
     Ok(Input {
@@ -95,14 +105,14 @@ struct Attribute {
 struct Uniform {
     field: String,
     gl: String,
-    ty: syn::Type,
+    ty: Box<syn::Type>,
 }
 
 impl FieldOutput {
     fn from_field(field: &syn::Field) -> syn::Result<Self> {
         enum FieldType {
             Attribute,
-            Uniform(syn::Type),
+            Uniform(Box<syn::Type>),
         }
         let mut field_type = None;
 
@@ -125,7 +135,9 @@ impl FieldOutput {
 
         if field_type.is_none() {
             match &field.ty {
-                syn::Type::Path(path) if path.path.is_ident("Attribute") => field_type = Some(FieldType::Attribute),
+                syn::Type::Path(path) if path.path.is_ident("Attribute") => {
+                    field_type = Some(FieldType::Attribute)
+                }
                 syn::Type::Path(path) if path.path.is_ident("Uniform") => {
                     let segment = path.path.segments.last().expect("Paths must be nonempty");
                     match &segment.arguments {
@@ -135,7 +147,9 @@ impl FieldOutput {
                                 .first()
                                 .expect("AngleBracketed arguments must be nonempty");
                             match arg {
-                                syn::GenericArgument::Type(ty) => field_type = Some(FieldType::Uniform(ty.clone())),
+                                syn::GenericArgument::Type(ty) => {
+                                    field_type = Some(FieldType::Uniform(Box::new(ty.clone())))
+                                }
                                 arg => {
                                     return Err(syn::Error::new_spanned(
                                         arg,
@@ -144,7 +158,12 @@ impl FieldOutput {
                                 }
                             }
                         }
-                        _ => return Err(syn::Error::new_spanned(segment, "Uniform requires a type parameter")),
+                        _ => {
+                            return Err(syn::Error::new_spanned(
+                                segment,
+                                "Uniform requires a type parameter",
+                            ))
+                        }
                     }
                 }
                 _ => {
@@ -206,7 +225,7 @@ impl Parse for StructAttr {
 
 enum FieldAttr {
     Attribute,
-    Uniform(syn::Type),
+    Uniform(Box<syn::Type>),
     GlName(String),
 }
 
@@ -219,7 +238,7 @@ impl Parse for FieldAttr {
                 let content;
                 syn::parenthesized!(content in input);
                 let ty: syn::Type = content.parse()?;
-                Self::Uniform(ty)
+                Self::Uniform(Box::new(ty))
             }
             "gl_name" => {
                 let _: syn::Token![=] = input.parse()?;
@@ -233,7 +252,7 @@ impl Parse for FieldAttr {
 
 enum CodeSource {
     File(Span, String),
-    Expr(syn::Expr),
+    Expr(Box<syn::Expr>),
 }
 
 impl ToTokens for CodeSource {

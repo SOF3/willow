@@ -1,11 +1,12 @@
+#![cfg_attr(debug_assertions, allow(dead_code))]
+
 extern crate proc_macro;
 
-use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use proc_macro2::TokenStream;
 use syn::Result;
 
-mod parse;
 mod gen;
+mod parse;
 
 /// Derives a user-friendly wrapper for `WebGlProgram` from a struct.
 ///
