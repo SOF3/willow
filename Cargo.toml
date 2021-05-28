@@ -1,0 +1,25 @@
+[workspace]
+members = [
+	".",
+	"codegen",
+]
+
+[package]
+name = "willow"
+version = "0.1.0"
+authors = ["SOFe <sofe2038@gmail.com>"]
+edition = "2018"
+
+[dependencies.willow-codegen]
+version = "0.1.0"
+path = "codegen"
+
+[dependencies.web-sys]
+version = "0.3.47"
+features = [
+	"WebGlBuffer",
+	"WebGlProgram",
+	"WebGlRenderingContext",
+	"WebGlShader",
+	"WebGlUniformLocation",
+]
