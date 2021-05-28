@@ -5,16 +5,17 @@ use quote::quote;
 use syn::Result;
 
 mod parse;
+mod gen;
 
 /// Derives a user-friendly wrapper for `WebGlProgram` from a struct.
 ///
 /// The struct must only contain the following fields:
-/// - `UniformLocation<T>` fields (use `#[wglrs(uniform, T)]` if aliased)
-/// - `AttrLocation` fields (use `#[wglrs(attribute)]` if aliased)
+/// - `UniformLocation<T>` fields (use `#[willow(uniform(T)]` if aliased)
+/// - `AttrLocation` fields (use `#[willow(attribute)]` if aliased)
 ///
 /// In the struct attribute, the path to the GLSL shaders must be specified:
 /// ```ignore
-/// #[wglrs(path = "scene")]
+/// #[willow(path = "scene")]
 /// ```
 ///
 /// This will load the GLSL shaders by running `include_str!("scene.vert")` and
@@ -22,13 +23,13 @@ mod parse;
 ///
 /// If they are already loaded in a constant, write this instead:
 /// ```ignore
-/// #[wglrs(vert_code = VERTEX_SHADER_CODE, vert_code = FRAGMENT_SHADER_CODE)]
+/// #[willow(vert = VERTEX_SHADER_CODE, frag = FRAGMENT_SHADER_CODE)]
 /// ```
 ///
 /// # Example
 /// ```ignore
-/// #[derive(wglrs::Program)]
-/// #[wglrs(path = "scene")]
+/// #[derive(willow::Program)]
+/// #[willow(path = "scene")]
 /// struct Scene {
 ///     vertices: AttrLocation,
 ///     normals: AttrLocation,
@@ -59,7 +60,7 @@ mod parse;
 ///         .draw_indexed(WebGlRenderingContext::TRIANGLES, indices);
 /// }
 /// ```
-#[proc_macro_derive(Program, attributes(wglrs))]
+#[proc_macro_derive(Program, attributes(willow))]
 pub fn program(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     program_imp(input.into())
         .unwrap_or_else(|err| err.to_compile_error())
