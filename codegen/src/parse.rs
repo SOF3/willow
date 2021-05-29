@@ -4,18 +4,26 @@ use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 
 pub struct Input {
-    vertex_source: CodeSource,
-    fragment_source: CodeSource,
+    pub vertex_source: CodeSource,
+    pub fragment_source: CodeSource,
 
-    attributes: Vec<Attribute>,
-    uniforms: Vec<Uniform>,
+    pub attributes: Vec<Attribute>,
+    pub uniforms: Vec<Uniform>,
+    pub program_data: syn::Ident,
+
+    pub vis: syn::Visibility,
+    pub ident: syn::Ident,
+    pub attr_ident: syn::Ident,
 }
 
 pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
     let input: syn::DeriveInput = syn::parse2(ts)?;
 
+    let vis = &input.vis;
     let mut vertex_source = None;
     let mut fragment_source = None;
+
+    let input_ident = &input.ident;
 
     for attr in &input.attrs {
         if attr.path.is_ident("willow") {
@@ -58,10 +66,13 @@ pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
     let mut attributes = Vec::new();
     let mut uniforms = Vec::new();
 
+    let mut program_data = None;
+
     for field in &fields.named {
         match FieldOutput::from_field(field)? {
             FieldOutput::Attribute(attr) => attributes.push(attr),
             FieldOutput::Uniform(unif) => uniforms.push(unif),
+            FieldOutput::ProgramData(ident) => program_data = Some(ident),
         }
     }
 
@@ -83,29 +94,30 @@ pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
             ))
         }
     };
+    let program_data = match program_data {
+        Some(data) => data,
+        None => return Err(syn::Error::new_spanned(
+            &input.fields,
+            "Program struct must have exactly one field with type ProgramData or #[willow(data)]",
+        )),
+    };
 
     Ok(Input {
         vertex_source,
         fragment_source,
         attributes,
         uniforms,
+        program_data,
+        vis: vis.clone(),
+        ident: input_ident.clone(),
+        attr_ident: quote::format_ident!("{}Attr", &input_ident),
     })
 }
 
-enum FieldOutput {
+pub enum FieldOutput {
     Attribute(Attribute),
     Uniform(Uniform),
-}
-
-struct Attribute {
-    field: String,
-    gl: String,
-}
-
-struct Uniform {
-    field: String,
-    gl: String,
-    ty: Box<syn::Type>,
+    ProgramData(syn::Ident),
 }
 
 impl FieldOutput {
@@ -113,15 +125,12 @@ impl FieldOutput {
         enum FieldType {
             Attribute,
             Uniform(Box<syn::Type>),
+            Data,
         }
         let mut field_type = None;
 
-        let field_name = field
-            .ident
-            .as_ref()
-            .expect("Fields checked as named")
-            .to_string();
-        let mut gl_name = field_name.clone();
+        let field_name = field.ident.as_ref().expect("Fields checked as named");
+        let mut gl_name = field_name.to_string();
 
         for attr in &field.attrs {
             if attr.path.is_ident("willow") {
@@ -129,6 +138,7 @@ impl FieldOutput {
                     FieldAttr::Attribute => field_type = Some(FieldType::Attribute),
                     FieldAttr::Uniform(ty) => field_type = Some(FieldType::Uniform(ty)),
                     FieldAttr::GlName(name) => gl_name = name,
+                    FieldAttr::Data => field_type = Some(FieldType::Data),
                 }
             }
         }
@@ -137,6 +147,9 @@ impl FieldOutput {
             match &field.ty {
                 syn::Type::Path(path) if path.path.is_ident("Attribute") => {
                     field_type = Some(FieldType::Attribute)
+                }
+                syn::Type::Path(path) if path.path.is_ident("ProgramData") => {
+                    field_type = Some(FieldType::Data)
                 }
                 syn::Type::Path(path) if path.path.is_ident("Uniform") => {
                     let segment = path.path.segments.last().expect("Paths must be nonempty");
@@ -177,16 +190,28 @@ impl FieldOutput {
 
         Ok(match field_type.expect("checked") {
             FieldType::Attribute => FieldOutput::Attribute(Attribute {
-                field: field_name,
+                field: field_name.clone(),
                 gl: gl_name,
             }),
             FieldType::Uniform(ty) => FieldOutput::Uniform(Uniform {
-                field: field_name,
+                field: field_name.clone(),
                 gl: gl_name,
                 ty,
             }),
+            FieldType::Data => FieldOutput::ProgramData(field_name.clone()),
         })
     }
+}
+
+pub struct Attribute {
+    field: syn::Ident,
+    gl: String,
+}
+
+pub struct Uniform {
+    field: syn::Ident,
+    gl: String,
+    ty: Box<syn::Type>,
 }
 
 enum StructAttr {
@@ -200,25 +225,27 @@ enum StructAttr {
 
 impl Parse for StructAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let kw: syn::Ident = input.parse()?;
+        let content;
+        syn::parenthesized!(content in input);
+        let kw: syn::Ident = content.parse()?;
         Ok(match kw.to_string().as_str() {
             "path" => {
-                let _: syn::Token![=] = input.parse()?;
-                let path: syn::LitStr = input.parse()?;
+                let _: syn::Token![=] = content.parse()?;
+                let path: syn::LitStr = content.parse()?;
                 let path = path.value();
                 Self::Path(path)
             }
             "vert" => {
-                let _: syn::Token![=] = input.parse()?;
-                let expr: syn::Expr = input.parse()?;
+                let _: syn::Token![=] = content.parse()?;
+                let expr: syn::Expr = content.parse()?;
                 Self::VertexCode(expr)
             }
             "frag" => {
-                let _: syn::Token![=] = input.parse()?;
-                let expr: syn::Expr = input.parse()?;
+                let _: syn::Token![=] = content.parse()?;
+                let expr: syn::Expr = content.parse()?;
                 Self::FragmentCode(expr)
             }
-            kw => return Err(input.error(format!("Unsupported attribute #[willow({})]", kw))),
+            kw => return Err(content.error(format!("Unsupported attribute #[willow({})]", kw))),
         })
     }
 }
@@ -227,30 +254,34 @@ enum FieldAttr {
     Attribute,
     Uniform(Box<syn::Type>),
     GlName(String),
+    Data,
 }
 
 impl Parse for FieldAttr {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let kw: syn::Ident = input.parse()?;
+        let content;
+        syn::parenthesized!(content in input);
+        let kw: syn::Ident = content.parse()?;
         Ok(match kw.to_string().as_str() {
             "attribute" => Self::Attribute,
             "uniform" => {
-                let content;
-                syn::parenthesized!(content in input);
-                let ty: syn::Type = content.parse()?;
+                let inner;
+                syn::parenthesized!(inner in content);
+                let ty: syn::Type = inner.parse()?;
                 Self::Uniform(Box::new(ty))
             }
             "gl_name" => {
-                let _: syn::Token![=] = input.parse()?;
-                let str: syn::LitStr = input.parse()?;
+                let _: syn::Token![=] = content.parse()?;
+                let str: syn::LitStr = content.parse()?;
                 Self::GlName(str.value())
             }
-            kw => return Err(input.error(format!("Unsupported attribute #[willow({})]", kw))),
+            "data" => Self::Data,
+            kw => return Err(content.error(format!("Unsupported attribute #[willow({})]", kw))),
         })
     }
 }
 
-enum CodeSource {
+pub enum CodeSource {
     File(Span, String),
     Expr(Box<syn::Expr>),
 }

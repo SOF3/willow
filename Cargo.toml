@@ -2,6 +2,7 @@
 members = [
 	".",
 	"codegen",
+	"example",
 ]
 
 [package]
@@ -9,6 +10,15 @@ name = "willow"
 version = "0.1.0"
 authors = ["SOFe <sofe2038@gmail.com>"]
 edition = "2018"
+
+[dependencies]
+cfg-if = "1.0.0"
+paste = "1.0.5"
+typed-builder = "0.9.0"
+
+[dependencies.nalgebra]
+version = "0.26.2"
+optional = true
 
 [dependencies.willow-codegen]
 version = "0.1.0"
@@ -23,3 +33,6 @@ features = [
 	"WebGlShader",
 	"WebGlUniformLocation",
 ]
+
+[features]
+default = ["nalgebra"]
