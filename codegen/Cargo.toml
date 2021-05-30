@@ -1,8 +1,11 @@
 [package]
 name = "willow-codegen"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["SOFe <sofe2038@gmail.com>"]
 edition = "2018"
+description = "Procedural macro crate for willow. This crate should not be used directly."
+license = "Apache-2.0"
+repository = "https://github.com/SOF3/willow"
 
 [lib]
 proc-macro = true
