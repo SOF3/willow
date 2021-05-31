@@ -4,9 +4,9 @@
 use std::marker::PhantomData;
 
 use once_cell::unsync::OnceCell;
-use web_sys::{WebGlUniformLocation, WebGlShader, WebGlProgram};
+use web_sys::{WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{Context, AttributeType, UniformType};
+use crate::{AttributeType, Context, UniformType};
 
 /// An internal type used to hold program-specific resources.
 /// There must be exactly one field in a [`Program`][super::Program]-deriving struct

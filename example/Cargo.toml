@@ -4,5 +4,9 @@ version = "0.1.0"
 authors = ["SOFe <sofe2038@gmail.com>"]
 edition = "2018"
 
+[dependencies]
+field-offset = "0.3.4"
+nalgebra = "0.26.2"
+
 [dependencies.willow]
 path = ".."

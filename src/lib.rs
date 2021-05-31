@@ -153,9 +153,9 @@ pub enum RenderPrimitiveType {
     LineLoop,
     /// Draws a line between a pair of vertices.
     Lines,
-    /// https://en.wikipedia.org/wiki/Triangle_strip
+    /// <https://en.wikipedia.org/wiki/Triangle_strip>
     TriangleStrip,
-    /// https://en.wikipedia.org/wiki/Triangle_fan
+    /// <https://en.wikipedia.org/wiki/Triangle_fan>
     TriangleFan,
     /// Draws a triangle for a group of three vertices.
     Triangles,
@@ -174,4 +174,3 @@ impl RenderPrimitiveType {
         }
     }
 }
-

@@ -1,6 +1,6 @@
 use std::ops::{Bound, RangeBounds};
 
-use super::{RenderPrimitiveType, Buffer, BufferDataUsage, Context};
+use super::{Buffer, BufferDataUsage, Context, RenderPrimitiveType};
 
 /// Represents WebGL programs.
 ///

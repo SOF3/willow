@@ -364,5 +364,7 @@ dependencies = [
 name = "willow-example"
 version = "0.1.0"
 dependencies = [
+ "field-offset",
+ "nalgebra",
  "willow",
 ]

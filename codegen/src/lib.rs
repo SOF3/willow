@@ -11,8 +11,9 @@ mod parse;
 /// Derives a user-friendly wrapper for `WebGlProgram` from a struct.
 ///
 /// The struct must only contain the following fields:
-/// - `UniformLocation<T>` fields (use `#[willow(uniform(T)]` if aliased)
-/// - `AttrLocation` fields (use `#[willow(attribute)]` if aliased)
+/// - Exactly one `ProgramData` field
+/// - `Uniform<T>` fields (use `#[willow(uniform(T)]` if aliased)
+/// - `Attribute<T>` fields (use `#[willow(attribute(T))]` if aliased)
 ///
 /// In the struct attribute, the path to the GLSL shaders must be specified:
 /// ```ignore
@@ -32,14 +33,14 @@ mod parse;
 /// #[derive(willow::Program)]
 /// #[willow(path = "scene")]
 /// struct Scene {
-///     vertices: AttrLocation,
-///     normals: AttrLocation,
-///     projection: UniformLocation<Matrix>,
+///     vertices: Attribute<Vector3<f32>>,
+///     normals: Attribute<Vector3<f32>>,
+///     projection: Uniform<Matrix4<f32>>,
 /// }
 /// ```
 ///
 /// With the files `scene.vert` and `scene.frag` containing at least these declarations:
-/// ```ignore
+/// ```glsl
 /// attribute vec3 vertices;
 /// attribute vec3 normals;
 /// uniform mat4 projection;
@@ -49,9 +50,8 @@ mod parse;
 /// ```ignore
 /// fn render(
 ///     gl: &WebGlRenderingContext,
-///     scene: &Program<Scene>,
-///     vertices: &Buffer,
-///     normals: &Buffer,
+///     scene: &Scene,
+///     buffer: &Buffer,
 ///     projection: Matrix,
 /// ) {
 ///     scene.call()

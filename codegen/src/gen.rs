@@ -17,6 +17,17 @@ fn gen_program_impl(input: &Input) -> TokenStream {
     let vert_code = &input.vertex_source;
     let frag_code = &input.fragment_source;
 
+    let init_attrs = input.attributes.iter().map(|attr| {
+        let name = &attr.field;
+        let init_expr = quote!(::willow::Attribute::create_from_macro());
+        quote!(#name: #init_expr)
+    });
+    let init_uniforms = input.uniforms.iter().map(|attr| {
+        let name = &attr.field;
+        let init_expr = quote!(::willow::Uniform::create_from_macro());
+        quote!(#name: #init_expr)
+    });
+
     let create_internally = quote! {
         fn create_internally(context: &::willow::Context) -> Self {
             let gl = &context.native;
@@ -31,6 +42,8 @@ fn gen_program_impl(input: &Input) -> TokenStream {
                     vertex_shader,
                     fragment_shader,
                 },
+                #(#init_attrs,)*
+                #(#init_uniforms,)*
             }
         }
     };
@@ -87,7 +100,7 @@ fn gen_program_impl(input: &Input) -> TokenStream {
             gl.bind_buffer(::willow::WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer.buf));
 
             #(
-                let location = self.#attr_fields.get_location(context, &self.#data_field.program, #attr_names);
+                let location = self.#attr_fields.get_location(context, &self.#data_field, #attr_names);
                 buffer.bind_to_attr(context, location, #field_index);
             )*
         }
@@ -160,8 +173,7 @@ fn gen_attrs(input: &Input) -> TokenStream {
         quote!(usize),
         input.attributes.iter().map(|attr| {
             let name = &attr.field;
-            let ty = &attr.ty;
-            quote!(::willow::offset_of!(#ty => #name).get_byte_offset())
+            quote!(::willow::offset_of!(Self => #name).get_byte_offset())
         }),
         input.attributes.iter().map(|attr| attr.ty.span()),
     );
@@ -171,7 +183,7 @@ fn gen_attrs(input: &Input) -> TokenStream {
         quote!(u32),
         input.attributes.iter().map(|attr| {
             let ty = &attr.ty;
-            quote!(AttributeType::gl_type(#ty))
+            quote!(<#ty as ::willow::AttributeType>::gl_type())
         }),
         input.attributes.iter().map(|attr| attr.ty.span()),
     );
@@ -181,7 +193,7 @@ fn gen_attrs(input: &Input) -> TokenStream {
         quote!(usize),
         input.attributes.iter().map(|attr| {
             let ty = &attr.ty;
-            quote!(AttributeType::num_comps(#ty))
+            quote!(<#ty as ::willow::AttributeType>::num_comps())
         }),
         input.attributes.iter().map(|attr| attr.ty.span()),
     );

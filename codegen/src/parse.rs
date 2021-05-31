@@ -174,6 +174,14 @@ pub enum FieldOutput {
     ProgramData(syn::Ident),
 }
 
+fn is_ending_ident(path: &syn::Path, name: &str) -> bool {
+    if let Some(segment) = path.segments.last() {
+        segment.ident == name
+    } else {
+        false
+    }
+}
+
 impl FieldOutput {
     fn from_field(field: &syn::Field) -> syn::Result<Self> {
         enum FieldType {
@@ -205,7 +213,8 @@ impl FieldOutput {
                     field_type = Some(FieldType::Data)
                 }
                 syn::Type::Path(path)
-                    if path.path.is_ident("Uniform") || path.path.is_ident("Attribute") =>
+                    if is_ending_ident(&path.path, "Uniform")
+                        || is_ending_ident(&path.path, "Attribute") =>
                 {
                     let segment = path.path.segments.last().expect("Paths must be nonempty");
                     let ty = match &segment.arguments {
@@ -231,10 +240,12 @@ impl FieldOutput {
                             ))
                         }
                     };
-                    if path.path.is_ident("Attribute") {
+                    if is_ending_ident(&path.path, "Attribute") {
                         field_type = Some(FieldType::Attribute(ty));
-                    } else if path.path.is_ident("Uniform") {
+                    } else if is_ending_ident(&path.path, "Uniform") {
                         field_type = Some(FieldType::Uniform(ty));
+                    } else {
+                        unreachable!()
                     }
                 }
                 _ => {
