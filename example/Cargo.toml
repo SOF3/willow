@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 field-offset = "0.3.4"
-nalgebra = "0.26.2"
+nalgebra = "0.27.0"
 
 [dependencies.willow]
 path = ".."
