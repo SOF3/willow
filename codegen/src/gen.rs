@@ -1,3 +1,4 @@
+use heck::CamelCase;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
@@ -7,7 +8,9 @@ use super::parse::Input;
 pub fn gen_code(input: &Input) -> TokenStream {
     let imp = gen_program_impl(input);
     let attrs = gen_attrs(input);
-    quote! { #imp #attrs }
+    let builder = gen_builder(input);
+    // eprintln!("builder: {}", &builder);
+    quote! { #imp #attrs #builder }
 }
 
 fn gen_program_impl(input: &Input) -> TokenStream {
@@ -220,5 +223,89 @@ fn gen_attrs(input: &Input) -> TokenStream {
             #fn_field_num_comps
             #fn_field_normalized
         }
+    }
+}
+
+fn gen_builder(input: &Input) -> TokenStream {
+    let ident = &input.ident;
+    let vis = &input.vis;
+    let builder_ident = &input.builder_ident;
+    let data_field = &input.program_data;
+
+    let generics: Vec<_> = input
+        .uniforms
+        .iter()
+        .map(|uniform| {
+            let raw = format!("has {}", uniform.field.to_string());
+            let camel = raw.to_camel_case();
+            syn::Ident::new(camel.as_str(), uniform.field.span())
+        })
+        .collect();
+
+    let field_names: Vec<_> = input
+        .uniforms
+        .iter()
+        .map(|uniform| &uniform.field)
+        .collect();
+    let types: Vec<_> = input.uniforms.iter().map(|uniform| &uniform.ty).collect();
+
+    let builders = field_names.iter().enumerate().map(|(i, field_name)| {
+        let empty_generics = generics.iter().enumerate().map(|(j, ident)| {
+            if i == j { quote!(()) } else { quote!(#ident) }
+        });
+        let filled_generics = generics.iter().enumerate().map(|(j, ident)| {
+            if i == j { types[i].to_token_stream() } else { quote!(#ident) }
+        });
+
+        let other_fields = input.uniforms.iter().enumerate().filter(|&(j, _)| j != i)
+            .map(|(_, uniform)| &uniform.field);
+
+        let other_generics = generics.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, v)| v);
+
+        let ty = &input.uniforms[i].ty;
+
+        quote! {
+            impl<'program, #(#other_generics),*> #builder_ident<'program, #(#empty_generics),*> {
+                #vis fn #field_name(self, #field_name: #ty) -> #builder_ident<'program, #(#filled_generics),*> {
+                    let Self {
+                        program,
+                        #field_name: (),
+                        #(#other_fields),*
+                    } = self;
+
+                    #builder_ident {
+                        program,
+                        #(#field_names),*
+                    }
+                }
+            }
+        }
+    });
+
+    let gl_names = input.uniforms.iter().map(|uniform| &uniform.gl);
+
+    let draw_def = quote! {
+        impl<'program> #builder_ident<'program, #(#types),*> {
+            pub fn draw(self, context: &::willow::Context) -> Option<()> {
+                #({
+                    let location = self.program.#field_names.get_location(context, &self.program.#data_field, #gl_names)?;
+                    ::willow::UniformType::apply_uniform(self.#field_names, &context.native, location);
+                })*
+
+                Some(())
+            }
+        }
+    };
+
+    quote! {
+        #[derive(Clone, Copy)]
+        #vis struct #builder_ident<'program, #(#generics),*> {
+            program: &'program #ident,
+            #(#field_names: #generics,)*
+        }
+
+        #(#builders)*
+
+        #draw_def
     }
 }

@@ -346,6 +346,7 @@ dependencies = [
  "once_cell",
  "paste",
  "typed-builder",
+ "wasm-bindgen",
  "web-sys",
  "willow-codegen",
 ]
@@ -366,5 +367,7 @@ version = "0.1.0"
 dependencies = [
  "field-offset",
  "nalgebra",
+ "wasm-bindgen",
+ "web-sys",
  "willow",
 ]

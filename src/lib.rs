@@ -41,6 +41,23 @@ pub struct Context {
     pub native: WebGlRenderingContext,
 }
 
+impl Context {
+    /// Creates a context on the canvas element.
+    pub fn from_canvas(canvas: web_sys::Element) -> Option<Self> {
+        use wasm_bindgen::JsCast;
+
+        Some(Self {
+            native: canvas
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .ok()?
+                .get_context("webgl")
+                .ok()??
+                .dyn_into()
+                .ok()?,
+        })
+    }
+}
+
 /// This macro allows efficient batch creation of programs by compiling and linking in parallel.
 ///
 /// Example:
@@ -57,17 +74,17 @@ pub struct Context {
 #[macro_export]
 macro_rules! create_programs {
     ($context:expr => $($ty:ty),* $(,)?) => {
-        #[allow(non_snake_case)]
         {
             $crate::paste! {
-                ($(
-                    let [<var_ $ty>] = $ty::create_internally(&context);
-                )*);
                 $(
-                    [<var_ $ty>].compile_shaders(&context);
+                    #[allow(non_snake_case)]
+                    let [<var_ $ty>] = $ty::create_internally(&$context);
+                )*;
+                $(
+                    [<var_ $ty>].compile_shaders(&$context);
                 )*
                 $(
-                    [<var_ $ty>].link_shaders(&context);
+                    [<var_ $ty>].link_shaders(&$context);
                 )*
 
                 ($(

@@ -14,6 +14,7 @@ pub struct Input {
     pub vis: syn::Visibility,
     pub ident: syn::Ident,
     pub attr_ident: syn::Ident,
+    pub builder_ident: syn::Ident,
 }
 
 pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
@@ -147,6 +148,7 @@ pub fn parse_input(ts: TokenStream) -> syn::Result<Input> {
         vis: vis.clone(),
         ident: input_ident.clone(),
         attr_ident: quote::format_ident!("{}Attr", &input_ident),
+        builder_ident: quote::format_ident!("{}Draw", &input_ident),
     })
 }
 
