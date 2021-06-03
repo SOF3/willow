@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 field-offset = "0.3.4"
-nalgebra = "0.26.2"
+nalgebra = "0.27.0"
 wasm-bindgen = "0.2.74"
 
 [dependencies.web-sys]
