@@ -299,6 +299,7 @@ fn gen_builder(input: &Input) -> TokenStream {
 
     quote! {
         #[derive(Clone, Copy)]
+        #[must_use = "This is a builder type"]
         #vis struct #builder_ident<'program, #(#generics),*> {
             program: &'program #ident,
             #(#field_names: #generics,)*
