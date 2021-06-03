@@ -11,7 +11,7 @@ repository = "https://github.com/SOF3/willow"
 proc-macro = true
 
 [dependencies]
-heck = "0.3.2"
+heck = "0.3.3"
 proc-macro2 = "1.0.24"
 quote = "1.0.9"
 
