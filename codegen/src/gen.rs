@@ -112,8 +112,15 @@ fn gen_program_impl(input: &Input) -> TokenStream {
     };
 
     let empty_generics = input.uniforms.iter().map(|_| quote!(()));
-    let filled_generics = input.uniforms.iter().map(|uniform| uniform.ty.to_token_stream());
-    let uniform_names: Vec<_> = input.uniforms.iter().map(|uniform| &uniform.field).collect();
+    let filled_generics = input
+        .uniforms
+        .iter()
+        .map(|uniform| uniform.ty.to_token_stream());
+    let uniform_names: Vec<_> = input
+        .uniforms
+        .iter()
+        .map(|uniform| &uniform.field)
+        .collect();
     let with_uniforms = quote! {
         /// Creates a builder type to assign uniforms one by one.
         #vis fn with_uniforms<'program>(&'program self) -> #builder_ident<'program, #(#empty_generics),*> {
@@ -262,7 +269,10 @@ fn gen_builder(input: &Input) -> TokenStream {
     let builder_ident = &input.builder_ident;
     let data_field = &input.program_data;
 
-    let doc_str = format!("A builder type to run a `{}` program after resetting all uniforms.", &ident);
+    let doc_str = format!(
+        "A builder type to run a `{}` program after resetting all uniforms.",
+        &ident
+    );
 
     let generics: Vec<_> = input
         .uniforms
