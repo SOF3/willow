@@ -15,6 +15,7 @@ use std::mem;
 
 pub use willow_codegen::Program;
 
+pub use anyhow::{self, Error, Result};
 #[doc(hidden)]
 pub use field_offset::offset_of;
 #[doc(hidden)]
@@ -43,17 +44,22 @@ pub struct Context {
 
 impl Context {
     /// Creates a context on the canvas element.
-    pub fn from_canvas(canvas: web_sys::Element) -> Option<Self> {
+    pub fn from_canvas(canvas: web_sys::Element) -> Result<Self> {
+        use anyhow::Context;
         use wasm_bindgen::JsCast;
 
-        Some(Self {
+        Ok(Self {
             native: canvas
                 .dyn_into::<web_sys::HtmlCanvasElement>()
-                .ok()?
+                .ok()
+                .context("The element is not a <canvas>")?
                 .get_context("webgl")
-                .ok()??
+                .ok()
+                .flatten()
+                .context("Could not initialize WebGL context")?
                 .dyn_into()
-                .ok()?,
+                .ok()
+                .context("WebGL context has an incorrect type")?,
         })
     }
 }

@@ -332,13 +332,16 @@ fn gen_builder(input: &Input) -> TokenStream {
     let draw_def = quote! {
         impl<'program> #builder_ident<'program, #(#types),*> {
             /// Calls the program after setting all uniforms.
-            pub fn draw(self, context: &::willow::Context) -> Option<()> {
+            pub fn draw(self, context: &::willow::Context) -> ::willow::Result<()> {
+                use ::willow::anyhow::Context;
+
                 #({
-                    let location = self.program.#field_names.get_location(context, &self.program.#data_field, #gl_names)?;
+                    let location = self.program.#field_names.get_location(context, &self.program.#data_field, #gl_names)
+                        .with_context(|| format!("Could not retrieve uniform location with name \"{}\"", #gl_names))?;
                     ::willow::UniformType::apply_uniform(self.#field_names, &context.native, location);
                 })*
 
-                Some(())
+                Ok(())
             }
         }
     };

@@ -15,6 +15,7 @@ license = "Apache-2.0"
 repository = "https://github.com/SOF3/willow"
 
 [dependencies]
+anyhow = "1.0.40"
 cfg-if = "1.0.0"
 field-offset = "0.3.4"
 log = "0.4.14"
