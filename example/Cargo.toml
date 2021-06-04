@@ -3,6 +3,9 @@ name = "willow-example"
 version = "0.1.1"
 authors = ["SOFe <sofe2038@gmail.com>"]
 edition = "2018"
+description = "Example webapp for willow"
+license = "Apache-2.0"
+repository = "https://github.com/SOF3/willow"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
