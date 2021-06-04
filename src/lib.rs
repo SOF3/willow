@@ -12,6 +12,7 @@
 
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::{Bound, RangeBounds};
 
 pub use willow_codegen::Program;
 
@@ -26,6 +27,9 @@ pub use paste::paste;
 pub use web_sys::{
     WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader, WebGlUniformLocation,
 };
+
+mod index;
+pub use index::*;
 
 mod types;
 pub use types::*;
@@ -196,4 +200,21 @@ impl RenderPrimitiveType {
             Self::Triangles => WebGlRenderingContext::TRIANGLES,
         }
     }
+}
+
+fn resolve_range(items: impl RangeBounds<usize>, len: usize) -> (i32, i32) {
+    let start = match items.start_bound() {
+        Bound::Included(&x) => x as i32,
+        Bound::Excluded(&x) => x as i32 - 1,
+        Bound::Unbounded => 0,
+    };
+    let end = match items.end_bound() {
+        Bound::Included(&x) => x as i32 + 1,
+        Bound::Excluded(&x) => x as i32,
+        Bound::Unbounded => len as i32,
+    };
+
+    assert!(end <= len as i32, "items range exceeds buffer size");
+
+    (start, end)
 }

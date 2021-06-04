@@ -1,6 +1,6 @@
-use std::ops::{Bound, RangeBounds};
+use std::ops::RangeBounds;
 
-use super::{Buffer, BufferDataUsage, Context, RenderPrimitiveType};
+use super::{resolve_range, Buffer, BufferDataUsage, Context, Indices, RenderPrimitiveType};
 
 /// Represents WebGL programs.
 ///
@@ -44,25 +44,25 @@ pub trait Program: Sized {
         buffer: &Buffer<Self::AttrStruct>,
         items: impl RangeBounds<usize>,
     ) {
-        let start = match items.start_bound() {
-            Bound::Included(&x) => x as i32,
-            Bound::Excluded(&x) => x as i32 - 1,
-            Bound::Unbounded => 0,
-        };
-        let end = match items.end_bound() {
-            Bound::Included(&x) => x as i32 + 1,
-            Bound::Excluded(&x) => x as i32,
-            Bound::Unbounded => buffer.count as i32,
-        };
-
-        assert!(
-            end <= buffer.count as i32,
-            "items range exceeds buffer size"
-        );
+        let (start, end) = resolve_range(items, buffer.count);
 
         self.apply_attrs(context, buffer);
 
         context.native.draw_arrays(mode.to_const(), start, end);
+    }
+
+    /// Runs the program with the given attributes indexed by `indices`.
+    fn draw_indexed(
+        &self,
+        context: &Context,
+        mode: RenderPrimitiveType,
+        buffer: &Buffer<Self::AttrStruct>,
+        indices: &Indices,
+        items: impl RangeBounds<usize>,
+    ) {
+        self.apply_attrs(context, buffer);
+
+        indices.draw(mode, context, items);
     }
 
     /// Applies the buffer ot the attributes in this program.
