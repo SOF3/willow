@@ -15,7 +15,9 @@ pub fn gen_code(input: &Input) -> TokenStream {
 
 fn gen_program_impl(input: &Input) -> TokenStream {
     let ident = &input.ident;
+    let vis = &input.vis;
     let attr_ident = &input.attr_ident;
+    let builder_ident = &input.builder_ident;
     let data_field = &input.program_data;
     let vert_code = &input.vertex_source;
     let frag_code = &input.fragment_source;
@@ -56,18 +58,18 @@ fn gen_program_impl(input: &Input) -> TokenStream {
             let gl = &context.native;
 
             gl.shader_source(&self.#data_field.vertex_shader, #vert_code);
-            gl.shader_source(&self.#data_field.fragment_shader, #frag_code);
-
             gl.compile_shader(&self.#data_field.vertex_shader);
+
+            gl.shader_source(&self.#data_field.fragment_shader, #frag_code);
             gl.compile_shader(&self.#data_field.fragment_shader);
 
             #[cfg(debug_assertions)]
             {
-                for shader in &[&self.#data_field.vertex_shader, &self.#data_field.fragment_shader] {
+                for (debug_name, shader) in &[("vertex shader", &self.#data_field.vertex_shader), ("fragment shader", &self.#data_field.fragment_shader)] {
                     let value = gl.get_shader_parameter(shader, ::willow::WebGlRenderingContext::COMPILE_STATUS);
                     if !value.is_truthy() {
                         let log = gl.get_shader_info_log(shader);
-                        panic!("Error compiling {}: {}", stringify!(#ident), log.unwrap_or_default());
+                        panic!("Error compiling {} of {}: {}", debug_name, stringify!(#ident), log.unwrap_or_default());
                     }
                 }
             }
@@ -109,7 +111,33 @@ fn gen_program_impl(input: &Input) -> TokenStream {
         }
     };
 
+    let empty_generics = input.uniforms.iter().map(|_| quote!(()));
+    let filled_generics = input.uniforms.iter().map(|uniform| uniform.ty.to_token_stream());
+    let uniform_names: Vec<_> = input.uniforms.iter().map(|uniform| &uniform.field).collect();
+    let with_uniforms = quote! {
+        /// Creates a builder type to assign uniforms one by one.
+        #vis fn with_uniforms<'program>(&'program self) -> #builder_ident<'program, #(#empty_generics),*> {
+            #builder_ident {
+                program: self,
+                #(#uniform_names: ()),*
+            }
+        }
+
+        /// Creates a builder type with all uniforms assigned to the
+        /// [`Default`][std::default::Default] value.
+        #vis fn with_default_uniforms<'program>(&'program self) -> #builder_ident<'program, #(#filled_generics),*> {
+            #builder_ident {
+                program: self,
+                #(#uniform_names: Default::default()),*
+            }
+        }
+    };
+
     quote! {
+        impl #ident {
+            #with_uniforms
+        }
+
         impl ::willow::Program for #ident {
             type AttrStruct = #attr_ident;
 
@@ -212,6 +240,8 @@ fn gen_attrs(input: &Input) -> TokenStream {
     );
 
     quote! {
+        /// Stores the attributes for a single vertex.
+        #[repr(C)]
         #vis struct #attr_ident { #(#field_def),* }
 
         impl ::willow::AttrStruct for #attr_ident {
@@ -231,6 +261,8 @@ fn gen_builder(input: &Input) -> TokenStream {
     let vis = &input.vis;
     let builder_ident = &input.builder_ident;
     let data_field = &input.program_data;
+
+    let doc_str = format!("A builder type to run a `{}` program after resetting all uniforms.", &ident);
 
     let generics: Vec<_> = input
         .uniforms
@@ -264,8 +296,11 @@ fn gen_builder(input: &Input) -> TokenStream {
 
         let ty = &input.uniforms[i].ty;
 
+        let doc_str = format!("Sets the `{}` uniform", input.uniforms[i].gl.as_str());
+
         quote! {
             impl<'program, #(#other_generics),*> #builder_ident<'program, #(#empty_generics),*> {
+                #[doc = #doc_str]
                 #vis fn #field_name(self, #field_name: #ty) -> #builder_ident<'program, #(#filled_generics),*> {
                     let Self {
                         program,
@@ -286,6 +321,7 @@ fn gen_builder(input: &Input) -> TokenStream {
 
     let draw_def = quote! {
         impl<'program> #builder_ident<'program, #(#types),*> {
+            /// Calls the program after setting all uniforms.
             pub fn draw(self, context: &::willow::Context) -> Option<()> {
                 #({
                     let location = self.program.#field_names.get_location(context, &self.program.#data_field, #gl_names)?;
@@ -298,8 +334,9 @@ fn gen_builder(input: &Input) -> TokenStream {
     };
 
     quote! {
+        #[doc = #doc_str]
         #[derive(Clone, Copy)]
-        #[must_use = "This is a builder type"]
+        #[must_use = "Builder type must be called"]
         #vis struct #builder_ident<'program, #(#generics),*> {
             program: &'program #ident,
             #(#field_names: #generics,)*

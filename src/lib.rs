@@ -18,9 +18,9 @@ pub use willow_codegen::Program;
 #[doc(hidden)]
 pub use field_offset::offset_of;
 #[doc(hidden)]
-pub use paste::paste;
+pub use log;
 #[doc(hidden)]
-pub use typed_builder::TypedBuilder;
+pub use paste::paste;
 #[doc(hidden)]
 pub use web_sys::{
     WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader, WebGlUniformLocation,

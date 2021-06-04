@@ -1,0 +1,8 @@
+run-debug: build-debug
+	sfz -Cr
+build-debug:
+	wasm-pack build --target web --debug
+run: build
+	sfz -Cr
+build:
+	wasm-pack build --target web

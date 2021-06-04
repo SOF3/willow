@@ -1,6 +1,6 @@
 [package]
 name = "willow-codegen"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["SOFe <sofe2038@gmail.com>"]
 edition = "2018"
 description = "Procedural macro crate for willow. This crate should not be used directly."
