@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::ops::RangeBounds;
 
 use anyhow::{Context as _, Result};
@@ -64,6 +63,7 @@ impl Indices {
                 };
                 array = Uint32Array::from(indices);
             } else {
+                use std::convert::TryFrom;
                 let indices: Vec<u32> = indices.iter().map(|&v| u32::try_from(v).expect("Index is unreasonably large")).collect();
                 array = Uint32Array::from(&indices[..]);
             }
