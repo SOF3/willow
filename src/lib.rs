@@ -42,7 +42,7 @@ pub use traits::*;
 
 /// A wrapper for a WebGL rendering context.
 pub struct Context {
-    #[doc(hidden)]
+    /// The raw WebGlRenderingContext object.
     pub native: WebGlRenderingContext,
 }
 
@@ -66,6 +66,36 @@ impl Context {
                 .context("WebGL context has an incorrect type")?,
         })
     }
+
+    /// Clears the color, depth and stencil buffers.
+    pub fn clear(&self, clear: Clear) {
+        let mut mask = 0;
+        if let Some([r, g, b, a]) = clear.color {
+            mask |= WebGlRenderingContext::COLOR_BUFFER_BIT;
+            self.native.clear_color(r, g, b, a);
+        }
+        if let Some(depth) = clear.depth {
+            mask |= WebGlRenderingContext::DEPTH_BUFFER_BIT;
+            self.native.clear_depth(depth);
+        }
+        if let Some(stencil) = clear.stencil {
+            mask |= WebGlRenderingContext::STENCIL_BUFFER_BIT;
+            self.native.clear_stencil(stencil);
+        }
+
+        self.native.clear(mask);
+    }
+}
+
+/// Parameters for [`Context::clear`][Context::clear].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Clear {
+    /// The RGBA values (in the range `[0, 1]`) to reset to.
+    pub color: Option<[f32; 4]>,
+    /// The depth value (in the range `[0, 1]`) to reset to.
+    pub depth: Option<f32>,
+    /// The stencil value to reset to.
+    pub stencil: Option<i32>,
 }
 
 /// This macro allows efficient batch creation of programs by compiling and linking in parallel.
@@ -121,7 +151,12 @@ impl<T: AttrStruct> Buffer<T> {
         let buf = gl.create_buffer().expect("Failed to create WebGL buffer");
         gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buf));
 
-        let bytes = unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len()) };
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                slice.as_ptr() as *const u8,
+                slice.len() * mem::size_of::<T>(),
+            )
+        };
         gl.buffer_data_with_u8_array(WebGlRenderingContext::ARRAY_BUFFER, bytes, usage.to_const());
 
         Self {

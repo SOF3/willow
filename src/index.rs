@@ -5,7 +5,7 @@ use cfg_if::cfg_if;
 use js_sys::{Uint16Array, Uint32Array};
 use web_sys::{WebGlBuffer, WebGlRenderingContext};
 
-use crate::{resolve_range, BufferDataUsage, Context, RenderPrimitiveType};
+use crate::{resolve_range, Buffer, BufferDataUsage, Context, Program, RenderPrimitiveType};
 
 /// Stores the indices of a buffer.
 pub struct Indices {
@@ -102,5 +102,78 @@ impl Indices {
             Some(&self.buffer),
         );
         gl.draw_elements_with_i32(mode.to_const(), end - start, self.ty, start);
+    }
+
+    /// Creates a subindex that implements [`AbstractIndices`](AbstractIndices).
+    pub fn subindex<B: RangeBounds<usize> + Copy>(&self, bounds: B) -> SubIndices<'_, B> {
+        SubIndices {
+            indices: self,
+            bounds,
+        }
+    }
+}
+
+/// A contiguous subsequence of an [`Indices`][Indices] buffer,
+/// used to implement [`AbstractIndices`][AbstractIndices].
+pub struct SubIndices<'t, B: RangeBounds<usize> + Copy> {
+    indices: &'t Indices,
+    bounds: B,
+}
+
+/// Types implementing this trait can be used to specify which vertices of a buffer to draw.
+pub trait AbstractIndices {
+    /// Draws the vertices in `buffer` indexed by `self`.
+    ///
+    /// Call [`Program::use_program`][Program::use_program] before calling this method.
+    ///
+    /// This method does not reassign uniforms.
+    /// Use the `with_uniforms` method (derived by the [`Program`][super::Program] macro)
+    /// to draw with uniforms specified.
+    fn draw<P: Program>(
+        &self,
+        mode: RenderPrimitiveType,
+        context: &Context,
+        program: &P,
+        buffer: &Buffer<P::AttrStruct>,
+    );
+}
+
+impl AbstractIndices for Indices {
+    fn draw<P: Program>(
+        &self,
+        mode: RenderPrimitiveType,
+        context: &Context,
+        program: &P,
+        buffer: &Buffer<P::AttrStruct>,
+    ) {
+        program.apply_attrs(context, buffer);
+        self.draw(mode, context, ..);
+    }
+}
+
+impl<'t, B: RangeBounds<usize> + Copy> AbstractIndices for SubIndices<'t, B> {
+    fn draw<P: Program>(
+        &self,
+        mode: RenderPrimitiveType,
+        context: &Context,
+        program: &P,
+        buffer: &Buffer<P::AttrStruct>,
+    ) {
+        program.apply_attrs(context, buffer);
+        self.indices.draw(mode, context, self.bounds);
+    }
+}
+
+impl<B: RangeBounds<usize> + Copy> AbstractIndices for B {
+    fn draw<P: Program>(
+        &self,
+        mode: RenderPrimitiveType,
+        context: &Context,
+        program: &P,
+        buffer: &Buffer<P::AttrStruct>,
+    ) {
+        program.apply_attrs(context, buffer);
+        let (start, end) = resolve_range(*self, buffer.count);
+        context.native.draw_arrays(mode.to_const(), start, end);
     }
 }

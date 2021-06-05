@@ -9,7 +9,6 @@ pub fn gen_code(input: &Input) -> TokenStream {
     let imp = gen_program_impl(input);
     let attrs = gen_attrs(input);
     let builder = gen_builder(input);
-    // eprintln!("builder: {}", &builder);
     quote! { #imp #attrs #builder }
 }
 
@@ -111,6 +110,12 @@ fn gen_program_impl(input: &Input) -> TokenStream {
         }
     };
 
+    let use_program = quote! {
+        fn use_program(&self, gl: &::willow::Context) {
+            gl.native.use_program(Some(&self.#data_field.program));
+        }
+    };
+
     let empty_generics = input.uniforms.iter().map(|_| quote!(()));
     let filled_generics = input
         .uniforms
@@ -155,6 +160,8 @@ fn gen_program_impl(input: &Input) -> TokenStream {
             #link_shaders
 
             #apply_attrs
+
+            #use_program
         }
     }
 }
@@ -166,7 +173,11 @@ fn gen_attrs(input: &Input) -> TokenStream {
     let field_def = input.attributes.iter().map(|attr| {
         let name = &attr.field;
         let ty = &attr.ty;
-        quote!(#name: #ty)
+        let doc = &attr.doc;
+        quote! {
+            #[doc = #doc]
+            #vis #name: #ty
+        }
     });
 
     let num_fields = input.attributes.len();
@@ -267,6 +278,7 @@ fn gen_builder(input: &Input) -> TokenStream {
     let ident = &input.ident;
     let vis = &input.vis;
     let builder_ident = &input.builder_ident;
+    let attr_ident = &input.attr_ident;
     let data_field = &input.program_data;
 
     let doc_str = format!(
@@ -332,14 +344,18 @@ fn gen_builder(input: &Input) -> TokenStream {
     let draw_def = quote! {
         impl<'program> #builder_ident<'program, #(#types),*> {
             /// Calls the program after setting all uniforms.
-            pub fn draw(self, context: &::willow::Context) -> ::willow::Result<()> {
+            #vis fn draw(self, context: &::willow::Context, mode: ::willow::RenderPrimitiveType, buffer: &::willow::Buffer<#attr_ident>, indices: &impl ::willow::AbstractIndices) -> ::willow::Result<()> {
                 use ::willow::anyhow::Context;
+
+                ::willow::Program::use_program(self.program, context);
 
                 #({
                     let location = self.program.#field_names.get_location(context, &self.program.#data_field, #gl_names)
                         .with_context(|| format!("Could not retrieve uniform location with name \"{}\"", #gl_names))?;
                     ::willow::UniformType::apply_uniform(self.#field_names, &context.native, location);
                 })*
+
+                ::willow::AbstractIndices::draw(indices, mode, context, self.program, buffer);
 
                 Ok(())
             }

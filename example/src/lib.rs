@@ -5,7 +5,10 @@
 
 use nalgebra::{Matrix4, Vector3};
 use wasm_bindgen::prelude::*;
-use willow::{Attribute, Context, Program, ProgramData, Uniform};
+use willow::{
+    Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData, RenderPrimitiveType,
+    Uniform,
+};
 
 /// This type wraps the program with the `foo.vert` and `foo.frag` shaders.
 #[derive(Program)]
@@ -33,4 +36,49 @@ pub fn main() {
 
     let context = Context::from_canvas(canvas).unwrap();
     let (foo,) = willow::create_programs!(context => Foo);
+
+    context.clear(Clear {
+        color: Some([0., 0., 0., 1.]),
+        depth: Some(1.),
+        stencil: None,
+    });
+
+    let attrs = Foo::prepare_buffer(
+        &context,
+        &[
+            FooAttr {
+                a_offset: Vector3::new(1.0, 0.0, 0.0),
+                a_color: Vector3::new(1.0, 0.0, 0.0),
+            },
+            FooAttr {
+                a_offset: Vector3::new(-1.0, -1.0, 0.0),
+                a_color: Vector3::new(1.0, 1.0, 0.0),
+            },
+            FooAttr {
+                a_offset: Vector3::new(-1.0, 1.0, 0.0),
+                a_color: Vector3::new(0.0, 1.0, 0.0),
+            },
+            FooAttr {
+                a_offset: Vector3::new(0.0, 0.0, 1.0),
+                a_color: Vector3::new(0.0, 0.0, 1.0),
+            },
+        ],
+        BufferDataUsage::StaticDraw,
+    );
+
+    let indices = Indices::new(
+        &context,
+        &[0, 1, 2, 0, 1, 3, 1, 2, 3, 2, 0, 3],
+        BufferDataUsage::StaticDraw,
+    )
+    .unwrap();
+
+    foo.with_uniforms()
+        .u_alpha(0.6)
+        .u_transform(
+            Matrix4::new_perspective(1., 1.5, 0.01, 5.)
+                .append_translation(&Vector3::new(0., 0., 2.)),
+        )
+        .draw(&context, RenderPrimitiveType::Triangles, &attrs, &indices)
+        .unwrap();
 }

@@ -1,5 +1,5 @@
-use proc_macro2::{Span, TokenStream};
-use quote::{quote_spanned, ToTokens};
+use proc_macro2::{Span, TokenStream, TokenTree};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 
@@ -196,6 +196,7 @@ impl FieldOutput {
         let field_name = field.ident.as_ref().expect("Fields checked as named");
         let mut gl_name = field_name.to_string();
         let mut normalized = false;
+        let mut doc = String::new();
 
         for attr in &field.attrs {
             if attr.path.is_ident("willow") {
@@ -205,6 +206,18 @@ impl FieldOutput {
                     FieldAttr::GlName(name) => gl_name = name,
                     FieldAttr::Data => field_type = Some(FieldType::Data),
                     FieldAttr::Normalized => normalized = true,
+                }
+            } else if attr.path.is_ident("doc") {
+                let mut tokens = attr.tokens.clone().into_iter();
+                if let Some(TokenTree::Punct(punct)) = tokens.next() {
+                    if punct.as_char() == '=' {
+                        if let Some(TokenTree::Literal(lit)) = tokens.next() {
+                            let lit = syn::parse2::<syn::LitStr>(quote!(#lit));
+                            if let Ok(lit) = lit {
+                                doc += lit.value().as_str();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -265,11 +278,13 @@ impl FieldOutput {
                 ty,
                 gl: gl_name,
                 normalized,
+                doc,
             }),
             FieldType::Uniform(ty) => FieldOutput::Uniform(Uniform {
                 field: field_name.clone(),
                 gl: gl_name,
                 ty,
+                doc,
             }),
             FieldType::Data => FieldOutput::ProgramData(field_name.clone()),
         })
@@ -281,12 +296,14 @@ pub struct Attribute {
     pub ty: Box<syn::Type>,
     pub gl: String,
     pub normalized: bool,
+    pub doc: String,
 }
 
 pub struct Uniform {
     pub field: syn::Ident,
     pub gl: String,
     pub ty: Box<syn::Type>,
+    pub doc: String,
 }
 
 enum FieldAttr {

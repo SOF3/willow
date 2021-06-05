@@ -1,6 +1,4 @@
-use std::ops::RangeBounds;
-
-use super::{resolve_range, Buffer, BufferDataUsage, Context, Indices, RenderPrimitiveType};
+use crate::{AbstractIndices, Buffer, BufferDataUsage, Context, RenderPrimitiveType};
 
 /// Represents WebGL programs.
 ///
@@ -36,33 +34,26 @@ pub trait Program: Sized {
         Buffer::from_slice(context, attrs, usage)
     }
 
-    /// Runs the program with the given attributes.
-    fn draw_fully(
-        &self,
-        context: &Context,
-        mode: RenderPrimitiveType,
-        buffer: &Buffer<Self::AttrStruct>,
-        items: impl RangeBounds<usize>,
-    ) {
-        let (start, end) = resolve_range(items, buffer.count);
-
-        self.apply_attrs(context, buffer);
-
-        context.native.draw_arrays(mode.to_const(), start, end);
-    }
+    /// Calls the WebGL context to use the current program for draw calls.
+    fn use_program(&self, gl: &Context);
 
     /// Runs the program with the given attributes indexed by `indices`.
-    fn draw_indexed(
+    ///
+    /// This method is identical to [`AbstractIndices::draw`][AbstractIndices::draw],
+    /// except with different parameter order.
+    ///
+    /// This method does not reassign uniforms.
+    /// Use the `with_uniforms` method (derived by the [`Program`][super::Program] macro)
+    /// to draw with uniforms specified.
+    fn draw(
         &self,
         context: &Context,
         mode: RenderPrimitiveType,
         buffer: &Buffer<Self::AttrStruct>,
-        indices: &Indices,
-        items: impl RangeBounds<usize>,
+        indices: &impl AbstractIndices,
     ) {
-        self.apply_attrs(context, buffer);
-
-        indices.draw(mode, context, items);
+        self.use_program(context);
+        indices.draw(mode, context, self, buffer);
     }
 
     /// Applies the buffer ot the attributes in this program.
