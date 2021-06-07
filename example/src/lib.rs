@@ -7,7 +7,7 @@ use nalgebra::{Matrix4, Vector3};
 use wasm_bindgen::prelude::*;
 use web_sys::WebGlRenderingContext;
 use willow::{
-    Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData, RenderPrimitiveType,
+    AspectFix, Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData, RenderPrimitiveType,
     Uniform,
 };
 
@@ -35,7 +35,7 @@ pub fn main() {
         .get_element_by_id("canvas")
         .unwrap();
 
-    let context = Context::from_canvas(canvas).unwrap();
+    let context = Context::from_canvas(canvas, AspectFix::FromWidth).unwrap();
     let (foo,) = willow::create_programs!(context => Foo);
 
     context.clear(Clear {
@@ -77,7 +77,7 @@ pub fn main() {
     .unwrap();
 
     foo.with_uniforms()
-        .u_alpha(0.6)
+        .u_alpha(1.0)
         .u_transform(
             Matrix4::new_perspective(context.aspect(), 1.5, 0.01, 5.)
                 * nalgebra::Rotation::from_euler_angles(0.5, 0.5, 0.5)

@@ -50,7 +50,7 @@ pub struct Context {
 
 impl Context {
     /// Creates a context on the canvas element.
-    pub fn from_canvas(canvas: web_sys::Element) -> Result<Self> {
+    pub fn from_canvas(canvas: web_sys::Element, aspect_fix: AspectFix) -> Result<Self> {
         use anyhow::Context;
         use wasm_bindgen::JsCast;
 
@@ -58,7 +58,13 @@ impl Context {
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .ok()
             .context("The element is not a <canvas>")?;
-        let aspect = canvas.width() as f32 / canvas.height() as f32;
+        let aspect = canvas.client_width() as f32 / canvas.client_height() as f32;
+
+        match aspect_fix {
+            AspectFix::None => (),
+            AspectFix::FromWidth => canvas.set_height((canvas.width() as f32 / aspect) as u32),
+            AspectFix::FromHeight => canvas.set_width((canvas.height() as f32 * aspect) as u32),
+        }
 
         Ok(Self {
             native: canvas
@@ -97,6 +103,20 @@ impl Context {
 
         self.native.clear(mask);
     }
+}
+
+/// Policy for correcting canvas size.
+///
+/// This corrects the canvas based on the rendered aspect ratio and the number of pixels in the
+/// canvas along a certain axis.
+#[derive(Debug, Clone, Copy)]
+pub enum AspectFix {
+    /// Do not provide any correction
+    None,
+    /// Correct height based on canvas width and rendered aspect ratio
+    FromWidth,
+    /// Correct width based on canvas height and rendered aspect ratio
+    FromHeight,
 }
 
 /// Parameters for [`Context::clear`][Context::clear].
