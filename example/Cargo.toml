@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 console_error_panic_hook = "0.1.6"
 field-offset = "0.3.4"
-nalgebra = "0.27.0"
+nalgebra = "0.27.1"
 wasm-bindgen = "0.2.74"
 wasm-logger = "0.2.0"
 
