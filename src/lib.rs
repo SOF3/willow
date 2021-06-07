@@ -44,6 +44,8 @@ pub use traits::*;
 pub struct Context {
     /// The raw WebGlRenderingContext object.
     pub native: WebGlRenderingContext,
+    /// Ratio of width/height
+    aspect: f32,
 }
 
 impl Context {
@@ -52,11 +54,14 @@ impl Context {
         use anyhow::Context;
         use wasm_bindgen::JsCast;
 
+        let canvas = canvas
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .ok()
+            .context("The element is not a <canvas>")?;
+        let aspect = canvas.width() as f32 / canvas.height() as f32;
+
         Ok(Self {
             native: canvas
-                .dyn_into::<web_sys::HtmlCanvasElement>()
-                .ok()
-                .context("The element is not a <canvas>")?
                 .get_context("webgl")
                 .ok()
                 .flatten()
@@ -64,7 +69,14 @@ impl Context {
                 .dyn_into()
                 .ok()
                 .context("WebGL context has an incorrect type")?,
+            aspect,
         })
+    }
+
+    /// Aspect ratio of the canvas.
+    pub fn aspect(&self) -> f32 {
+        // TODO update upon resize
+        self.aspect
     }
 
     /// Clears the color, depth and stencil buffers.
@@ -173,7 +185,7 @@ impl<T: AttrStruct> Buffer<T> {
             T::field_num_comps(field_index) as i32, // component count
             T::field_type(field_index),             // type
             T::field_normalized(field_index),       // normalized
-            mem::align_of::<T>() as i32,            // stride
+            mem::size_of::<T>() as i32,             // stride
             T::field_offset(field_index) as i32,    // offset
         );
     }
@@ -249,7 +261,7 @@ fn resolve_range(items: impl RangeBounds<usize>, len: usize) -> (i32, i32) {
         Bound::Unbounded => len as i32,
     };
 
-    assert!(end <= len as i32, "items range exceeds buffer size");
+    // assert!(end <= len as i32, "items range exceeds buffer size");
 
     (start, end)
 }

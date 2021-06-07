@@ -5,6 +5,7 @@
 
 use nalgebra::{Matrix4, Vector3};
 use wasm_bindgen::prelude::*;
+use web_sys::WebGlRenderingContext;
 use willow::{
     Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData, RenderPrimitiveType,
     Uniform,
@@ -42,6 +43,8 @@ pub fn main() {
         depth: Some(1.),
         stencil: None,
     });
+    context.native.enable(WebGlRenderingContext::DEPTH_TEST);
+    context.native.depth_func(WebGlRenderingContext::LEQUAL);
 
     let attrs = Foo::prepare_buffer(
         &context,
@@ -76,8 +79,10 @@ pub fn main() {
     foo.with_uniforms()
         .u_alpha(0.6)
         .u_transform(
-            Matrix4::new_perspective(1., 1.5, 0.01, 5.)
-                .append_translation(&Vector3::new(0., 0., 2.)),
+            Matrix4::new_perspective(context.aspect(), 1.5, 0.01, 5.)
+                * nalgebra::Rotation::from_euler_angles(0.5, 0.5, 0.5)
+                    .to_homogeneous()
+                    .append_translation(&Vector3::new(0., 0., -2.)),
         )
         .draw(&context, RenderPrimitiveType::Triangles, &attrs, &indices)
         .unwrap();

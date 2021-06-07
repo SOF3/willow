@@ -1,4 +1,4 @@
-use std::ops::RangeBounds;
+use std::ops::{self, RangeBounds};
 
 use anyhow::{Context as _, Result};
 use cfg_if::cfg_if;
@@ -164,7 +164,32 @@ impl<'t, B: RangeBounds<usize> + Copy> AbstractIndices for SubIndices<'t, B> {
     }
 }
 
-impl<B: RangeBounds<usize> + Copy> AbstractIndices for B {
+macro_rules! impl_bounds {
+    ($ty:ty) => {
+        impl AbstractIndices for $ty {
+            fn draw<P: Program>(
+                &self,
+                mode: RenderPrimitiveType,
+                context: &Context,
+                program: &P,
+                buffer: &Buffer<P::AttrStruct>,
+            ) {
+                program.apply_attrs(context, buffer);
+                let (start, end) = resolve_range(self.clone(), buffer.count);
+                context.native.draw_arrays(mode.to_const(), start, end);
+            }
+        }
+    };
+}
+
+impl_bounds!(ops::Range<usize>);
+impl_bounds!(ops::RangeFrom<usize>);
+impl_bounds!(ops::RangeFull);
+impl_bounds!(ops::RangeInclusive<usize>);
+impl_bounds!(ops::RangeTo<usize>);
+impl_bounds!(ops::RangeToInclusive<usize>);
+
+impl<'t, T: AbstractIndices> AbstractIndices for &'t T {
     fn draw<P: Program>(
         &self,
         mode: RenderPrimitiveType,
@@ -172,8 +197,6 @@ impl<B: RangeBounds<usize> + Copy> AbstractIndices for B {
         program: &P,
         buffer: &Buffer<P::AttrStruct>,
     ) {
-        program.apply_attrs(context, buffer);
-        let (start, end) = resolve_range(*self, buffer.count);
-        context.native.draw_arrays(mode.to_const(), start, end);
+        (&**self).draw(mode, context, program, buffer);
     }
 }

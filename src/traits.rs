@@ -50,7 +50,7 @@ pub trait Program: Sized {
         context: &Context,
         mode: RenderPrimitiveType,
         buffer: &Buffer<Self::AttrStruct>,
-        indices: &impl AbstractIndices,
+        indices: impl AbstractIndices,
     ) {
         self.use_program(context);
         indices.draw(mode, context, self, buffer);
