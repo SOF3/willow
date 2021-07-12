@@ -112,9 +112,9 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6217061c826a68b3608d96a528705973bd8a21f2bedd8b794b12c633c730d8af"
+checksum = "39fe9195887b501f296ac918ecbff4650b6935da164d4902ef73e140c46a0dce"
 dependencies = [
  "approx",
  "matrixmultiply",
