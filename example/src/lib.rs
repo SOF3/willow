@@ -7,8 +7,8 @@ use nalgebra::{Matrix4, Vector3};
 use wasm_bindgen::prelude::*;
 use web_sys::WebGlRenderingContext;
 use willow::{
-    AspectFix, Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData, RenderPrimitiveType,
-    Uniform,
+    AspectFix, Attribute, BufferDataUsage, Clear, Context, Indices, Program, ProgramData,
+    RenderPrimitiveType, Uniform,
 };
 
 /// This type wraps the program with the `foo.vert` and `foo.frag` shaders.
