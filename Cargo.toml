@@ -25,7 +25,7 @@ paste = "1.0.5"
 wasm-bindgen = "0.2.75"
 
 [dependencies.nalgebra]
-version = "0.28.0"
+version = "0.29.0"
 optional = true
 
 [dependencies.willow-codegen]
