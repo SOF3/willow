@@ -33,7 +33,7 @@ version = "0.0.3"
 path = "codegen"
 
 [dependencies.web-sys]
-version = "0.3.52"
+version = "0.3.53"
 features = [
 	"WebGlBuffer",
 	"WebGlProgram",
