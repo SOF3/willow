@@ -13,7 +13,7 @@ proc-macro = true
 [dependencies]
 heck = "0.3.3"
 proc-macro2 = "1.0.29"
-quote = "1.0.9"
+quote = "1.0.10"
 
 [dependencies.syn]
 version = "1.0.78"
