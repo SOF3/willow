@@ -12,7 +12,7 @@ proc-macro = true
 
 [dependencies]
 heck = "0.3.3"
-proc-macro2 = "1.0.30"
+proc-macro2 = "1.0.32"
 quote = "1.0.10"
 
 [dependencies.syn]
